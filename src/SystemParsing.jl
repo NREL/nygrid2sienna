@@ -70,3 +70,46 @@ for (br_id, br) in enumerate(eachrow(df_branch))
         _build_transformers(sys; frombus=from_bus, tobus=to_bus, name=name, r=r, x=x, b=b, rating=rating)
     end
 end
+
+##########################
+##### ADD DCline #########
+##########################
+
+df_hvdc = CSV.read("config/hvdc_config.csv", DataFrame)
+for (hvdc_id, hvdc) in enumerate(eachrow(df_hvdc))
+    name = hvdc.name
+    from_id = hvdc.from_bus
+    to_id = hvdc.to_bus
+    from_bus = first(get_components(x -> PSY.get_number(x) == from_id, ACBus, sys))
+    to_bus = first(get_components(x -> PSY.get_number(x) == to_id, ACBus, sys))
+    rating = hvdc.Pmax
+    _build_hvdc(sys; frombus=from_bus, tobus=to_bus, name=name, r=0.0, x=0.0, b=0.0, rating=rating)
+end
+
+##########################
+### ADD InterfaceLimits ##
+##########################
+df_iflim = CSV.read("config/interfaceflow_limits.csv", DataFrame)
+df_ifmap = CSV.read("config/interfaceflow_mapping.csv", DataFrame)
+for idx = 1:nrow(df_iflim)
+    name = "IF_" * string(idx)
+    rating_lb = df_iflim[df_iflim.index.==Int(idx), :rating_lb][1]
+    rating_ub = df_iflim[df_iflim.index.==Int(idx), :rating_ub][1]
+    setoflines = df_ifmap[df_ifmap.index.==Int(idx), :mapping]
+    signofline = sign.(setoflines)
+    ifdict = Dict(zip(string.(abs.(setoflines)), signofline))
+    _build_interface_flow(sys; name, rating_lb, rating_ub, ifdict)
+end
+
+
+##########################
+### ADD Loads ############
+##########################
+
+
+
+
+
+##########################
+### ADD Generators #######
+##########################

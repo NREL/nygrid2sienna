@@ -55,6 +55,45 @@ function _build_transformers(sys; frombus::PSY.ACBus, tobus::PSY.ACBus, name, r,
     return device
 end
 
+
+function _build_hvdc(sys; frombus::PSY.ACBus, tobus::PSY.ACBus, name, r, x, b, rating)
+    # Create a new storage device of the specified type
+    device = PSY.TModelHVDCLine(
+        name=name,
+        available=true,
+        active_power_flow=rating / base_power,
+        arc=PSY.Arc(from=frombus, to=tobus),
+        r=r,
+        l=x,
+        c=b,
+        active_power_limits_from=PSY.MinMax((0, rating)),
+        active_power_limits_to=PSY.MinMax((0, rating)),
+    )
+    PSY.add_component!(sys, device)
+    return device
+end
+
+
+function _build_interface_flow(sys; name, rating_lb, rating_ub, ifdict)
+    # Create a new storage device of the specified type
+    service = PSY.TransmissionInterface(
+        name=name,
+        available=true,
+        active_power_flow_limits=PSY.MinMax((rating_lb / 100.0, rating_ub / 100.0)),
+        violation_penalty=0.0,
+        direction_mapping=ifdict
+    )
+    contri_devices = PSY.get_components(
+        x -> haskey(ifdict, get_name(x)),
+        Line,
+        sys,
+    )
+    PSY.add_service!(sys, service, contri_devices)
+    return service
+end
+
+
+
 #Function builds a wind component in the pwoer system. it takes arguments such as the system ('sys'), the bus wheree the wind component is located ('bus::PYS.Bus), 
 #the name of the wind component ('name'), its rating, time series data for wind genration ('re_ts') and the year for which the data is provided ('load_year')
 function _build_wind(sys, bus::PSY.Bus, name, rating, re_ts, load_year)
@@ -234,43 +273,6 @@ function _build_load(sys, bus::PSY.Bus, name, load_ts, load_year)
     end
 
     return load  # Return the newly created load component
-end
-
-
-
-function _build_hvdc(sys; frombus::PSY.ACBus, tobus::PSY.ACBus, name, r, x, b, rating)
-    # Create a new storage device of the specified type
-    device = PSY.TModelHVDCLine(
-        name=name,
-        available=true,
-        active_power_flow=rating / 100.0,
-        arc=PSY.Arc(from=frombus, to=tobus),
-        r=r,
-        l=x,
-        c=b,
-        active_power_limits_from=PSY.MinMax((0, rating)),
-        active_power_limits_to=PSY.MinMax((0, rating)),
-    )
-    PSY.add_component!(sys, device)
-    return device
-end
-
-function _build_interface_flow(sys; name, rating_lb, rating_ub, ifdict)
-    # Create a new storage device of the specified type
-    service = PSY.TransmissionInterface(
-        name=name,
-        available=true,
-        active_power_flow_limits=PSY.MinMax((rating_lb / 100.0, rating_ub / 100.0)),
-        violation_penalty=0.0,
-        direction_mapping=ifdict
-    )
-    contri_devices = PSY.get_components(
-        x -> haskey(ifdict, get_name(x)),
-        Line,
-        sys,
-    )
-    PSY.add_service!(sys, service, contri_devices)
-    return service
 end
 
 
