@@ -138,6 +138,29 @@ for (th_id, th) in enumerate(eachrow(df_thermal))
     generator = _add_thermal(sys, bus, name=name, fuel=fuel, cost=op_cost, pmin=pmin, pmax=pmax, ramp_rate=ramp_rate, pm=pm)
 end
 
+##  Add Nuclear ##############
+df_nuclear = CSV.read("config/nuclear_config.csv", DataFrame)
+nuclear_cf = CSV.read("Data/nuclearGenDaily_2019.csv", DataFrame)
+for (th_id, th) in enumerate(eachrow(df_nuclear)) # TODO: nuclear maintainance not considered
+    name = th.Name
+    bus = first(get_components(x -> PSY.get_number(x) == th.BusId, ACBus, sys))
+    fuel = ThermalFuels.NUCLEAR
+    pmin = th.Pmin
+    pmax = th.Pmax
+    op_cost = ThermalGenerationCost(;
+        variable=FuelCurve(; value_curve=LinearCurve(5.0), fuel_cost=1.0),
+        fixed=0.0,
+        start_up=0.0,
+        shut_down=0.0,
+    )
+    ramp_rate = th.maxRamp10 / 10.0
+    pm = PrimeMovers.ST
+    generator = _add_nuclear(sys, bus, name=name, fuel=fuel, cost=op_cost, pmin=pmin, pmax=pmax, ramp_rate=ramp_rate, pm=pm)
+end
+
+
+
+
 ##########################
 ### ADD Loads ############
 ##########################
