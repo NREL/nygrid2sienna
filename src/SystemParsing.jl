@@ -158,8 +158,52 @@ for (th_id, th) in enumerate(eachrow(df_nuclear)) # TODO: nuclear maintainance n
     generator = _add_nuclear(sys, bus, name=name, fuel=fuel, cost=op_cost, pmin=pmin, pmax=pmax, ramp_rate=ramp_rate, pm=pm)
 end
 
+##  Add Hydro ##############
+df_hydro = CSV.read("config/hydro_config.csv", DataFrame)
+for (hy_id, hy) in enumerate(eachrow(df_hydro))
+    name = hy.Name
+    bus = first(get_components(x -> PSY.get_number(x) == hy.BusId, ACBus, sys))
+    pmin = hy.Pmin
+    pmax = hy.Pmax
+    op_cost = HydroGenerationCost(;
+        variable=FuelCurve(; value_curve=LinearCurve(5.0), fuel_cost=1.0),
+        fixed=0.0,
+    )
+    ramp_rate = hy.maxRamp10 / 10.0
+    pm = PrimeMovers.HY
+    generator = _add_hydro(sys, bus, name=name, cost=op_cost, pmin=pmin, pmax=pmax, ramp_rate=ramp_rate, pm=pm)
+end
 
-
+##  Add AggGen ###########
+zonename_mapping = Dict(
+    "NEISO" => "NPX",
+    "PJM" => "PJM",
+    "IESO" => "O H",
+    "HQ" => "H Q",
+)
+df_agg = CSV.read("config/agggen_config.csv", DataFrame)
+df_hourlylmp = CSV.read("Data/priceHourly_2019.csv", DataFrame)
+for (th_id, th) in enumerate(eachrow(df_agg))
+    name = th.Name
+    bus = first(get_components(x -> PSY.get_number(x) == th.BusId, ACBus, sys))
+    fuel = ThermalFuels.OTHER
+    pmin = th.Pmin
+    pmax = th.Pmax
+    if pmin == 0.0
+        pmin = 0.2 * pmax ## TODO: find better way to estimate pmin
+    end
+    filtered_df = filter(row -> row.ZoneName == zonename_mapping[th.Zone], df_hourlylmp)
+    zonal_price = filtered_df[1, "LBMP"] ###TODO: this needs to be a time-series
+    op_cost = ThermalGenerationCost(;
+        variable=FuelCurve(; value_curve=LinearCurve(zonal_price), fuel_cost=1.0),
+        fixed=0.0,
+        start_up=0.0,
+        shut_down=0.0,
+    )
+    ramp_rate = th.maxRampAgc
+    pm = PrimeMovers.OT
+    generator = _add_thermal(sys, bus, name=name, fuel=fuel, cost=op_cost, pmin=pmin, pmax=pmax, ramp_rate=ramp_rate, pm=pm)
+end
 
 ##########################
 ### ADD Loads ############
