@@ -101,6 +101,42 @@ for idx = 1:nrow(df_iflim)
     _build_interface_flow(sys; name, rating_lb, rating_ub, ifdict)
 end
 
+##########################
+### ADD Generators #######
+##########################
+
+pm_mapping = Dict(
+    "Combustion Turbine" => PrimeMovers.CT,
+    "Combined Cycle" => PrimeMovers.CC,
+    "Internal Combustion" => PrimeMovers.IC,
+    "Steam Turbine" => PrimeMovers.ST,
+    "Jet Engine" => PrimeMovers.GT,
+)
+
+fuel_mapping = Dict(
+    "Kerosene" => ThermalFuels.DISTILLATE_FUEL_OIL,
+    "Natural Gas" => ThermalFuels.NATURAL_GAS,
+    "Fuel Oil 2" => ThermalFuels.DISTILLATE_FUEL_OIL,
+    "Coal" => ThermalFuels.COAL,
+    "Fuel Oil 6" => ThermalFuels.RESIDUAL_FUEL_OIL,
+)
+#### Add Thermal #########
+df_thermal = CSV.read("config/thermal_config.csv", DataFrame)
+fuel_cost = CSV.read("Data/fuelPriceWeekly_2019.csv", DataFrame)
+for (th_id, th) in enumerate(eachrow(df_thermal))
+    name = th.Name
+    bus = first(get_components(x -> PSY.get_number(x) == th.BusId, ACBus, sys))
+    fuel = fuel_mapping[th.FuelType]
+    pmin = th.Pmin
+    pmax = th.Pmax
+    if pmin == 0.0
+        pmin = 0.2 * pmax ## TODO: find better way to estimate pmin
+    end
+    op_cost = _add_thermal_cost(th.HeatRateLM_1, th.HeatRateLM_0, th.Zone, th.FuelType, pmin, fuel_cost)
+    ramp_rate = th.maxRamp10 / 10.0
+    pm = pm_mapping[th.UnitType]
+    generator = _add_thermal(sys, bus, name=name, fuel=fuel, cost=op_cost, pmin=pmin, pmax=pmax, ramp_rate=ramp_rate, pm=pm)
+end
 
 ##########################
 ### ADD Loads ############
@@ -110,6 +146,3 @@ end
 
 
 
-##########################
-### ADD Generators #######
-##########################
