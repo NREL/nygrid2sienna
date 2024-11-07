@@ -208,8 +208,12 @@ end
 ##########################
 ### ADD Loads ############
 ##########################
+load_profile = CSV.read("Data/load_profiles.csv", DataFrame)
+load_year = 2019
+for busid in names(load_profile)
 
-
-
-
-
+    bus = first(get_components(x -> PSY.get_number(x) == parse(Float64, busid), ACBus, sys))
+    name = "load_" * busid
+    load_ts = load_profile[!, busid]
+    _build_load(sys, bus, name, load_ts, load_year)
+end

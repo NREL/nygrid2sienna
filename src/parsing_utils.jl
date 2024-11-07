@@ -372,7 +372,7 @@ function _build_load(sys, bus::PSY.Bus, name, load_ts, load_year)
         available=true,                    # Mark the component as available
         bus=bus,                           # Assign the bus to the component
         base_power=100.0,                  # Base power of the load component (in kW)
-        max_constant_active_power=maximum(load_ts) / 100,  # Maximum constant active power of the load component (scaled from the maximum of the load time series)
+        max_constant_active_power=maximum(load_ts) / base_power,  # Maximum constant active power of the load component (scaled from the maximum of the load time series)
     )
 
     # Add the load component to the power system model
