@@ -18,6 +18,43 @@ function _build_bus(sys, number, name, bustype, angle, magnitude, voltage_limits
     )
     add_component!(sys, bus)
 end
+
+function _build_lines(sys; frombus::PSY.ACBus, tobus::PSY.ACBus, name, r, x, b, rating)
+    # Create a new storage device of the specified type
+    device = PSY.Line(
+        name=name,
+        available=true,
+        active_power_flow=rating / 100.0,
+        reactive_power_flow=0.0,
+        arc=PSY.Arc(from=frombus, to=tobus),
+        r=r,
+        x=x,
+        b=(from=b, to=b),
+        rating=rating / 100.0,
+        angle_limits=PSY.MinMax((-1.571, 1.571)),
+    )
+    PSY.add_component!(sys, device)
+    return device
+end
+
+
+function _build_transformers(sys; frombus::PSY.ACBus, tobus::PSY.ACBus, name, r, x, b, rating)
+    # Create a new storage device of the specified type
+    device = PSY.Transformer2W(
+        name=name,
+        available=true,
+        active_power_flow=rating / 100.0,
+        reactive_power_flow=0.0,
+        arc=PSY.Arc(from=frombus, to=tobus),
+        r=r,
+        x=x,
+        primary_shunt=b,
+        rating=rating / 100.0,
+    )
+    PSY.add_component!(sys, device)
+    return device
+end
+
 #Function builds a wind component in the pwoer system. it takes arguments such as the system ('sys'), the bus wheree the wind component is located ('bus::PYS.Bus), 
 #the name of the wind component ('name'), its rating, time series data for wind genration ('re_ts') and the year for which the data is provided ('load_year')
 function _build_wind(sys, bus::PSY.Bus, name, rating, re_ts, load_year)
@@ -199,23 +236,7 @@ function _build_load(sys, bus::PSY.Bus, name, load_ts, load_year)
     return load  # Return the newly created load component
 end
 
-function _build_lines(sys; frombus::PSY.ACBus, tobus::PSY.ACBus, name, r, x, b, rating)
-    # Create a new storage device of the specified type
-    device = PSY.Line(
-        name=name,
-        available=true,
-        active_power_flow=rating / 100.0,
-        reactive_power_flow=0.0,
-        arc=PSY.Arc(from=frombus, to=tobus),
-        r=r,
-        x=x,
-        b=(from=b, to=b),
-        rate=rating / 100.0,
-        angle_limits=PSY.MinMax((-1.571, 1.571)),
-    )
-    PSY.add_component!(sys, device)
-    return device
-end
+
 
 function _build_hvdc(sys; frombus::PSY.ACBus, tobus::PSY.ACBus, name, r, x, b, rating)
     # Create a new storage device of the specified type
