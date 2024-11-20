@@ -29,3 +29,11 @@ Manifest.toml
 
 ## vs code
 .vscode*
+
+
+## .mat
+*.mat
+*.lp
+.html
+
+TestRun/*

@@ -31,7 +31,7 @@ function _build_lines(sys; frombus::PSY.ACBus, tobus::PSY.ACBus, name, r, x, b, 
         x=x,
         b=(from=b, to=b),
         rating=rating / 100.0,
-        angle_limits=PSY.MinMax((-1.571, 1.571)),
+        angle_limits=PSY.MinMax((-1.571 * 2, 1.571 * 2)),
     )
     PSY.add_component!(sys, device)
     return device
@@ -58,16 +58,16 @@ end
 
 function _build_hvdc(sys; frombus::PSY.ACBus, tobus::PSY.ACBus, name, r, x, b, rating)
     # Create a new storage device of the specified type
-    device = PSY.TModelHVDCLine(
+    device = PSY.TwoTerminalHVDCLine(
         name=name,
         available=true,
         active_power_flow=rating / base_power,
         arc=PSY.Arc(from=frombus, to=tobus),
-        r=r,
-        l=x,
-        c=b,
-        active_power_limits_from=PSY.MinMax((0, rating)),
-        active_power_limits_to=PSY.MinMax((0, rating)),
+        active_power_limits_from=PSY.MinMax((-rating / base_power, rating / base_power)),
+        active_power_limits_to=PSY.MinMax((-rating / base_power, rating / base_power)),
+        reactive_power_limits_from=PSY.MinMax((-rating / base_power, rating / base_power)),
+        reactive_power_limits_to=PSY.MinMax((-rating / base_power, rating / base_power)),
+        loss=LinearCurve(0.0),
     )
     PSY.add_component!(sys, device)
     return device
@@ -84,14 +84,13 @@ function _build_interface_flow(sys; name, rating_lb, rating_ub, ifdict)
         direction_mapping=ifdict
     )
     contri_devices = PSY.get_components(
-        x -> haskey(ifdict, get_name(x)),
-        Line,
+        x -> haskey(ifdict, PSY.get_name(x)),
+        ACBranch,
         sys,
     )
     PSY.add_service!(sys, service, contri_devices)
     return service
 end
-
 function _add_thermal(
     sys,
     bus::PSY.Bus;
@@ -216,11 +215,12 @@ function _add_hydro(
     cost::PSY.OperationalCost,
     pm::PSY.PrimeMovers,
 )
-    device = PSY.HydroDispatch(
+    device = PSY.ThermalStandard(
         name=name,
         available=true,
         bus=bus,
-        active_power=0.0,
+        status=true,
+        active_power=pmax / base_power,
         reactive_power=0.0,
         rating=pmax / base_power,
         active_power_limits=PSY.MinMax((pmin / base_power, pmax / base_power)),
@@ -230,6 +230,7 @@ function _add_hydro(
         base_power=base_power,
         time_limits=(up=1.0, down=1.0),
         prime_mover_type=pm,
+        fuel=ThermalFuels.OTHER,
         ext=Dict{String,Any}(),
     )
     PSY.add_component!(sys, device)
@@ -366,13 +367,18 @@ end
 
 #Function builds a load component in the power system. it takes arugments such as system, bus, name, load_ts and load_eyear, 
 function _build_load(sys, bus::PSY.Bus, name, load_ts, load_year)
+    if maximum(load_ts) == 0.0
+        maxload = minimum(load_ts) / base_power
+    else
+        maxload = maximum(load_ts) / base_power
+    end
     # Create a new load component with the specified parameters
     load = PSY.StandardLoad(
         name=name,                         # Set the name for the new component
         available=true,                    # Mark the component as available
         bus=bus,                           # Assign the bus to the component
         base_power=100.0,                  # Base power of the load component (in kW)
-        max_constant_active_power=maximum(load_ts) / base_power,  # Maximum constant active power of the load component (scaled from the maximum of the load time series)
+        max_constant_active_power=maxload,  # Maximum constant active power of the load component (scaled from the maximum of the load time series)
     )
 
     # Add the load component to the power system model
@@ -398,7 +404,7 @@ function _build_load(sys, bus::PSY.Bus, name, load_ts, load_year)
             load,
             PSY.SingleTimeSeries(
                 "max_active_power",
-                TimeArray(get_timestamp(load_year), load_ts),
+                TimeArray(get_timestamp(load_year), load_ts / minimum(load_ts)),
                 scaling_factor_multiplier=PSY.get_max_active_power,
             )
         )

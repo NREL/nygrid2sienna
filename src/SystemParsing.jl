@@ -36,7 +36,7 @@ for (bus_id, bus) in enumerate(eachrow(df_bus))
     voltage_limits = (min=bus.vmin, max=bus.vmax)
     base_voltage = bus.Vn
     load_zone = get_component(PSY.LoadZone, sys, bus.zone)
-    _build_bus(sys, number, name, bustype, angle, magnitude, voltage_limits, base_voltage, load_zone) #TODO: bus voltage disabled. Will come back to this and fix it for transformers and interface flows.
+    _build_bus(sys, number, name, bustype, angle, magnitude, voltage_limits, base_voltage, load_zone)
 end
 
 ##########################
@@ -51,7 +51,7 @@ for (br_id, br) in enumerate(eachrow(df_branch))
     to_bus = first(get_components(x -> PSY.get_number(x) == to_id, ACBus, sys))
     v1 = PSY.get_base_voltage(from_bus)
     v2 = PSY.get_base_voltage(to_bus)
-    name = string(from_id) * "_" * string(to_id)
+    name = string(from_id) * "-" * string(to_id)
     if name in br_name_list
         name = name * "~2"
     end
@@ -96,8 +96,8 @@ for idx = 1:nrow(df_iflim)
     rating_lb = df_iflim[df_iflim.index.==Int(idx), :rating_lb][1]
     rating_ub = df_iflim[df_iflim.index.==Int(idx), :rating_ub][1]
     setoflines = df_ifmap[df_ifmap.index.==Int(idx), :mapping]
-    signofline = sign.(setoflines)
-    ifdict = Dict(zip(string.(abs.(setoflines)), signofline))
+    signofline = float(df_ifmap[df_ifmap.index.==Int(idx), :sign])
+    ifdict = Dict(zip(string.(setoflines), signofline))
     _build_interface_flow(sys; name, rating_lb, rating_ub, ifdict)
 end
 
@@ -129,9 +129,9 @@ for (th_id, th) in enumerate(eachrow(df_thermal))
     fuel = fuel_mapping[th.FuelType]
     pmin = th.Pmin
     pmax = th.Pmax
-    if pmin == 0.0
-        pmin = 0.2 * pmax ## TODO: find better way to estimate pmin
-    end
+    # if pmin == 0.0
+    #     pmin = 0.2 * pmax ## TODO: find better way to estimate pmin
+    # end
     op_cost = _add_thermal_cost(th.HeatRateLM_1, th.HeatRateLM_0, th.Zone, th.FuelType, pmin, fuel_cost)
     ramp_rate = th.maxRamp10 / 10.0
     pm = pm_mapping[th.UnitType]
@@ -148,7 +148,7 @@ for (th_id, th) in enumerate(eachrow(df_nuclear)) # TODO: nuclear maintainance n
     pmin = th.Pmin
     pmax = th.Pmax
     op_cost = ThermalGenerationCost(;
-        variable=FuelCurve(; value_curve=LinearCurve(5.0), fuel_cost=1.0),
+        variable=FuelCurve(; value_curve=LinearCurve(1.1), fuel_cost=1.0),
         fixed=0.0,
         start_up=0.0,
         shut_down=0.0,
@@ -165,9 +165,11 @@ for (hy_id, hy) in enumerate(eachrow(df_hydro))
     bus = first(get_components(x -> PSY.get_number(x) == hy.BusId, ACBus, sys))
     pmin = hy.Pmin
     pmax = hy.Pmax
-    op_cost = HydroGenerationCost(;
-        variable=FuelCurve(; value_curve=LinearCurve(5.0), fuel_cost=1.0),
+    op_cost = ThermalGenerationCost(;
+        variable=FuelCurve(; value_curve=LinearCurve(3.0), fuel_cost=1.0),
         fixed=0.0,
+        start_up=0.0,
+        shut_down=0.0,
     )
     ramp_rate = hy.maxRamp10 / 10.0
     pm = PrimeMovers.HY
@@ -189,9 +191,9 @@ for (th_id, th) in enumerate(eachrow(df_agg))
     fuel = ThermalFuels.OTHER
     pmin = th.Pmin
     pmax = th.Pmax
-    if pmin == 0.0
-        pmin = 0.2 * pmax ## TODO: find better way to estimate pmin
-    end
+    # if pmin == 0.0
+    #     pmin = 0.2 * pmax ## TODO: find better way to estimate pmin
+    # end
     filtered_df = filter(row -> row.ZoneName == zonename_mapping[th.Zone], df_hourlylmp)
     zonal_price = filtered_df[1, "LBMP"] ###TODO: this needs to be a time-series
     op_cost = ThermalGenerationCost(;
