@@ -10,12 +10,8 @@ using JuMP
 # using HiGHS
 using Xpress
 using StorageSystemsSimulations
-using HydroPowerSimulations
 using DataFrames
 using CSV
-using PowerGraphics
-const PG = PowerGraphics
-using PlotlyJS
 # Include the parsing utilities script
 include("parsing_utils.jl")
 include("post_process.jl")
@@ -23,9 +19,9 @@ include("post_process.jl")
 sim_name = "test_case"
 
 output_dir = "TestRun"
-interval = 1
-horizon = 1
-steps = 1
+interval = 24
+horizon = 24
+steps = 365
 
 # Check if the output directory exists, create if not
 if !ispath(output_dir)
@@ -103,7 +99,7 @@ sim = Simulation(
     models=models,
     sequence=sequence,
     simulation_folder=output_dir,
-    initial_time=DateTime("2019-07-18T14:00:00")
+    # initial_time=DateTime("2019-07-18T14:00:00")
 )
 
 # Build and execute the simulation
