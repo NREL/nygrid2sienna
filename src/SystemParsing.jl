@@ -20,7 +20,7 @@ df_bus = CSV.read("config/bus_config.csv", DataFrame)
 ##########################
 zone_list = unique(df_bus[!, "zone"])
 for zone in zone_list
-    z = PSY.LoadZone(zone, 0.0, 0.0)
+    z = PSY.Area(zone, 0.0, 0.0)
     PSY.add_component!(sys, z)
 end
 
@@ -35,8 +35,8 @@ for (bus_id, bus) in enumerate(eachrow(df_bus))
     magnitude = bus.v0
     voltage_limits = (min=bus.vmin, max=bus.vmax)
     base_voltage = bus.Vn
-    load_zone = get_component(PSY.LoadZone, sys, bus.zone)
-    _build_bus(sys, number, name, bustype, angle, magnitude, voltage_limits, base_voltage, load_zone)
+    area = get_component(PSY.Area, sys, bus.zone)
+    _build_bus(sys, number, name, bustype, angle, magnitude, voltage_limits, base_voltage, area)
 end
 
 ##########################
@@ -53,6 +53,7 @@ for (br_id, br) in enumerate(eachrow(df_branch))
     v2 = PSY.get_base_voltage(to_bus)
     name = string(from_id) * "-" * string(to_id)
     if name in br_name_list
+        println(name)
         name = name * "~2"
     end
     push!(br_name_list, name)
@@ -89,7 +90,7 @@ end
 ##########################
 ### ADD InterfaceLimits ##
 ##########################
-df_iflim = CSV.read("config/interfaceflow_limits.csv", DataFrame)
+df_iflim = CSV.read("config/interfaceflow_limits0718.csv", DataFrame)
 df_ifmap = CSV.read("config/interfaceflow_mapping.csv", DataFrame)
 for idx = 1:nrow(df_iflim)
     name = "IF_" * string(idx)
@@ -190,12 +191,16 @@ for (th_id, th) in enumerate(eachrow(df_agg))
     bus = first(get_components(x -> PSY.get_number(x) == th.BusId, ACBus, sys))
     fuel = ThermalFuels.OTHER
     pmin = th.Pmin
-    pmax = th.Pmax
+    if name != "Hqimport"
+        pmax = th.Pmax
+    else
+        pmax = th.Pmax
+    end
     # if pmin == 0.0
     #     pmin = 0.2 * pmax ## TODO: find better way to estimate pmin
     # end
     filtered_df = filter(row -> row.ZoneName == zonename_mapping[th.Zone], df_hourlylmp)
-    zonal_price = filtered_df[1, "LBMP"] ###TODO: this needs to be a time-series
+    zonal_price = filtered_df[4767, "LBMP"] ###TODO: this needs to be a time-series
     op_cost = ThermalGenerationCost(;
         variable=FuelCurve(; value_curve=LinearCurve(zonal_price), fuel_cost=1.0),
         fixed=0.0,
@@ -217,5 +222,10 @@ for busid in names(load_profile)
     bus = first(get_components(x -> PSY.get_number(x) == parse(Float64, busid), ACBus, sys))
     name = "load_" * busid
     load_ts = load_profile[!, busid]
+    # if minimum(load_ts) <= 0.0
+    #     load_ts[load_ts.<=0.0] .= 0.1
+    # end
     _build_load(sys, bus, name, load_ts, load_year)
 end
+
+PSY.to_json(sys, "nys2019.json", force=true)

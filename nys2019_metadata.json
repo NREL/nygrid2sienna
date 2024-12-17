@@ -1,0 +1,52 @@
+{
+    "name": "",
+    "description": "",
+    "frequency": 60,
+    "time_series_resolutions_milliseconds": [
+        3600000
+    ],
+    "component_counts": [
+        {
+            "type": "ACBus",
+            "count": 57
+        },
+        {
+            "type": "Arc",
+            "count": 93
+        },
+        {
+            "type": "Area",
+            "count": 14
+        },
+        {
+            "type": "Line",
+            "count": 57
+        },
+        {
+            "type": "StandardLoad",
+            "count": 57
+        },
+        {
+            "type": "ThermalStandard",
+            "count": 271
+        },
+        {
+            "type": "Transformer2W",
+            "count": 35
+        },
+        {
+            "type": "TransmissionInterface",
+            "count": 11
+        },
+        {
+            "type": "TwoTerminalHVDCLine",
+            "count": 4
+        }
+    ],
+    "time_series_counts": [
+        {
+            "type": "SingleTimeSeries",
+            "count": 57
+        }
+    ]
+}

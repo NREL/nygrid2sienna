@@ -64,7 +64,7 @@ PSY.transform_single_time_series!(sys, Hour(horizon), Hour(interval))
 
 # Create a unit commitment template using DC power flow model
 template_uc = PSI.template_unit_commitment(; network=NetworkModel(PSI.PTDFPowerModel, use_slacks=false, PTDF_matrix=PTDF(sys)))
-# template_uc = PSI.template_unit_commitment(; network=NetworkModel(PSI.CopperPlatePowerModel, use_slacks=true, PTDF_matrix=PTDF(sys)))
+# template_uc = PSI.template_unit_commitment(; network=NetworkModel(PSI.CopperPlatePowerModel, use_slacks=false, PTDF_matrix=PTDF(sys)))
 # Set device models for different components
 set_device_model!(template_uc, ThermalStandard, ThermalBasicDispatch)
 set_device_model!(template_uc, StandardLoad, StaticPowerLoad)
@@ -103,7 +103,7 @@ sim = Simulation(
     models=models,
     sequence=sequence,
     simulation_folder=output_dir,
-    initial_time=DateTime("2019-01-01T01:00:00")
+    initial_time=DateTime("2019-07-18T14:00:00")
 )
 
 # Build and execute the simulation
@@ -117,7 +117,7 @@ results_uc = get_decision_problem_results(results, "UC");
 set_system!(results_uc, sys);
 variables = PSI.read_realized_variables(results_uc)
 export_results_csv(results_uc, variables, "ED", joinpath(results.path, "results"))
-
+PSI.compute_conflict!(model.internal.container)
 # plotlyjs()
 # p = PG.plot_fuel(
 #     results_uc;

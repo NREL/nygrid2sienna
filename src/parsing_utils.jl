@@ -5,7 +5,7 @@ const PSY = PowerSystems
 get_timestamp(year) = DateTime("$(year)-01-01T00:00:00"):Hour(1):DateTime("$(year)-12-31T23:55:00")
 
 
-function _build_bus(sys, number, name, bustype, angle, magnitude, voltage_limits, base_voltage, load_zone)
+function _build_bus(sys, number, name, bustype, angle, magnitude, voltage_limits, base_voltage, area)
     bus = PSY.ACBus(
         number=number,
         name=name,
@@ -14,7 +14,7 @@ function _build_bus(sys, number, name, bustype, angle, magnitude, voltage_limits
         magnitude=magnitude,
         voltage_limits=voltage_limits,
         base_voltage=base_voltage,
-        load_zone=load_zone,
+        area=area,
     )
     add_component!(sys, bus)
 end
@@ -128,7 +128,7 @@ end
 
 function _add_thermal_cost(heatrate1, heatrate0, zone, fuel, pmin, fuel_table)
     heat_rate_curve = LinearCurve(heatrate1, heatrate0)
-    priceTable = fuel_table[1, :] #TODO: Selecting the first week's fuel price now
+    priceTable = fuel_table[29, :] #TODO: Selecting the first week's fuel price now
     fuelPrice = 0.0
     if fuel == "Coal"
         fuelPrice = priceTable["coal_NY"]
@@ -367,6 +367,7 @@ end
 
 #Function builds a load component in the power system. it takes arugments such as system, bus, name, load_ts and load_eyear, 
 function _build_load(sys, bus::PSY.Bus, name, load_ts, load_year)
+
     if maximum(load_ts) == 0.0
         maxload = minimum(load_ts) / base_power
     else
