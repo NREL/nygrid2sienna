@@ -10,6 +10,7 @@ const IS = InfrastructureSystems
 include("parsing_utils.jl")
 
 base_power = 100
+load_year = 2019
 sys = PSY.System(base_power)
 set_units_base_system!(sys, PSY.UnitSystem.NATURAL_UNITS)
 
@@ -90,7 +91,7 @@ end
 ##########################
 ### ADD InterfaceLimits ##
 ##########################
-df_iflim = CSV.read("config/interfaceflow_limits0718.csv", DataFrame)
+df_iflim = CSV.read("config/interfaceflow_limits.csv", DataFrame)
 df_ifmap = CSV.read("config/interfaceflow_mapping.csv", DataFrame)
 for idx = 1:nrow(df_iflim)
     name = "IF_" * string(idx)
@@ -124,6 +125,12 @@ fuel_mapping = Dict(
 #### Add Thermal #########
 df_thermal = CSV.read("config/thermal_config.csv", DataFrame)
 fuel_cost = CSV.read("Data/fuelPriceWeekly_2019.csv", DataFrame)
+hourly_fuelcost = repeat(fuel_cost, inner=168)
+start_date = DateTime("2019-01-01T00:00:00")
+n_hours = 8760  # Total hours in a year
+hourly_time_range = start_date:Hour(1):(start_date+Hour(n_hours - 1))
+hourly_fuelcost = hourly_fuelcost[1:length(hourly_time_range), :]
+hourly_fuelcost.TimeStamp = hourly_time_range
 for (th_id, th) in enumerate(eachrow(df_thermal))
     name = th.Name
     bus = first(get_components(x -> PSY.get_number(x) == th.BusId, ACBus, sys))
@@ -133,11 +140,12 @@ for (th_id, th) in enumerate(eachrow(df_thermal))
     # if pmin == 0.0
     #     pmin = 0.2 * pmax ## TODO: find better way to estimate pmin
     # end
-    op_cost = _add_thermal_cost(th.HeatRateLM_1, th.HeatRateLM_0, th.Zone, th.FuelType, pmin, fuel_cost)
+    heat_rate_curve, fuel_cost_ts = _add_fuel_cost(th.HeatRateLM_1, th.HeatRateLM_0, th.Zone, th.FuelType, pmin, hourly_fuelcost)
     ramp_rate = th.maxRamp10 / 10.0
     pm = pm_mapping[th.UnitType]
-    generator = _add_thermal(sys, bus, name=name, fuel=fuel, cost=op_cost, pmin=pmin, pmax=pmax, ramp_rate=ramp_rate, pm=pm)
+    generator = _add_thermal(sys, bus, name, heat_rate_curve, fuel, pmin, pmax, ramp_rate, pm, fuel_cost_ts)
 end
+
 
 ##  Add Nuclear ##############
 df_nuclear = CSV.read("config/nuclear_config.csv", DataFrame)
@@ -200,16 +208,11 @@ for (th_id, th) in enumerate(eachrow(df_agg))
     #     pmin = 0.2 * pmax ## TODO: find better way to estimate pmin
     # end
     filtered_df = filter(row -> row.ZoneName == zonename_mapping[th.Zone], df_hourlylmp)
-    zonal_price = filtered_df[4767, "LBMP"] ###TODO: this needs to be a time-series
-    op_cost = ThermalGenerationCost(;
-        variable=FuelCurve(; value_curve=LinearCurve(zonal_price), fuel_cost=1.0),
-        fixed=0.0,
-        start_up=0.0,
-        shut_down=0.0,
-    )
+    zonal_price = filtered_df[1:8760, "LBMP"] ###TODO: this needs to be a time-series
+    heat_rate_curve = LinearCurve(1.0, 0)
     ramp_rate = th.maxRampAgc
     pm = PrimeMovers.OT
-    generator = _add_thermal(sys, bus, name=name, fuel=fuel, cost=op_cost, pmin=pmin, pmax=pmax, ramp_rate=ramp_rate, pm=pm)
+    generator = _add_thermal(sys, bus, name, heat_rate_curve, fuel, pmin, pmax, ramp_rate, pm, zonal_price)
 end
 
 ##########################

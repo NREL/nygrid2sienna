@@ -92,15 +92,16 @@ function _build_interface_flow(sys; name, rating_lb, rating_ub, ifdict)
     return service
 end
 function _add_thermal(
-    sys,
-    bus::PSY.Bus;
+    sys::System,
+    bus::PSY.Bus,
     name,
-    fuel::PSY.ThermalFuels,
+    heat_rate::PSY.LinearCurve,
+    fuel,
     pmin,
     pmax,
     ramp_rate,
-    cost::PSY.OperationalCost,
     pm::PSY.PrimeMovers,
+    fuel_cost_ts,
 )
     device = PSY.ThermalStandard(
         name=name,
@@ -113,7 +114,11 @@ function _add_thermal(
         active_power_limits=PSY.MinMax((pmin / base_power, pmax / base_power)),
         reactive_power_limits=nothing,
         ramp_limits=(up=ramp_rate / base_power, down=ramp_rate / base_power),
-        operation_cost=cost,
+        operation_cost=ThermalGenerationCost(
+            variable=FuelCurve(; value_curve=heat_rate, fuel_cost=1.0),
+            fixed=0.0,
+            start_up=0.0,
+            shut_down=0.0),
         base_power=base_power,
         time_limits=(up=1.0, down=1.0),
         prime_mover_type=pm,
@@ -122,52 +127,61 @@ function _add_thermal(
         ext=Dict{String,Any}(),
     )
     PSY.add_component!(sys, device)
-
-    return device  # Return the newly created component
-end
-
-function _add_thermal_cost(heatrate1, heatrate0, zone, fuel, pmin, fuel_table)
-    heat_rate_curve = LinearCurve(heatrate1, heatrate0)
-    priceTable = fuel_table[29, :] #TODO: Selecting the first week's fuel price now
-    fuelPrice = 0.0
-    if fuel == "Coal"
-        fuelPrice = priceTable["coal_NY"]
-    elseif fuel == "Natural Gas"
-        fuelPrice = priceTable["NG_A2E"]
-        if zone in ["F", "G", "H", "I"]
-            fuelPrice = priceTable["NG_F2I"]
-        end
-        if zone == "K"
-            fuelPrice = priceTable["NG_J"]
-        end
-        if zone == "J"
-            fuelPrice = priceTable["NG_K"]
-        end
-    elseif fuel == "Fuel Oil 2" || fuel == "Kerosene"
-        if zone in ["F", "G", "H", "I"]
-            fuelPrice = priceTable["FO2_DSNY"]
-        else
-            fuelPrice = priceTable["FO2_UPNY"]
-        end
-    elseif fuel == "Fuel Oil 6"
-        if zone in ["F", "G", "H", "I"]
-            fuelPrice = priceTable["FO6_DSNY"]
-        else
-            fuelPrice = priceTable["FO6_UPNY"]
-        end
-    else
-        error("Error: Undefined fuel type!")
-    end
-    fuel_cost = fuelPrice
-    fuel_curve = FuelCurve(; value_curve=heat_rate_curve, fuel_cost=fuel_cost)
-    startup_cost = pmin * heatrate1 * fuel_cost
+    PSY.add_time_series!(
+        sys,
+        device,
+        PSY.SingleTimeSeries(
+            "fuel_cost",
+            TimeArray(get_timestamp(load_year), fuel_cost_ts),
+            scaling_factor_multiplier=nothing,
+        )
+    )
+    fuel_curve = FuelCurve(; value_curve=heat_rate, fuel_cost=get_time_series_keys(device)[1])
+    startup_cost = 0.0
     op_cost = ThermalGenerationCost(;
         variable=fuel_curve,
         fixed=0.0,
         start_up=startup_cost,
         shut_down=0.0,
     )
-    return op_cost
+    set_operation_cost!(device, op_cost)
+    return device  # Return the newly created component
+end
+
+function _add_fuel_cost(heatrate1, heatrate0, zone, fuel, pmin, priceTable)
+    heat_rate_curve = LinearCurve(heatrate1, heatrate0)
+    fuelPrice = similar(priceTable[!, "coal_NY"],)
+    if fuel == "Coal"
+        fuelPrice = priceTable[!, "coal_NY"]
+    elseif fuel == "Natural Gas"
+        fuelPrice = priceTable[!, "NG_A2E"]
+        if zone in ["F", "G", "H", "I"]
+            fuelPrice = priceTable[!, "NG_F2I"]
+        end
+        if zone == "K"
+            fuelPrice = priceTable[!, "NG_J"]
+        end
+        if zone == "J"
+            fuelPrice = priceTable[!, "NG_K"]
+        end
+    elseif fuel == "Fuel Oil 2" || fuel == "Kerosene"
+        if zone in ["F", "G", "H", "I"]
+            fuelPrice = priceTable[!, "FO2_DSNY"]
+        else
+            fuelPrice = priceTable[!, "FO2_UPNY"]
+        end
+    elseif fuel == "Fuel Oil 6"
+        if zone in ["F", "G", "H", "I"]
+            fuelPrice = priceTable[!, "FO6_DSNY"]
+        else
+            fuelPrice = priceTable[!, "FO6_UPNY"]
+        end
+    else
+        error("Error: Undefined fuel type!")
+    end
+    fuel_cost = fuelPrice
+
+    return heat_rate_curve, fuel_cost
 end
 
 function _add_nuclear(

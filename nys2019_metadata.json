@@ -46,7 +46,7 @@
     "time_series_counts": [
         {
             "type": "SingleTimeSeries",
-            "count": 57
+            "count": 312
         }
     ]
 }
