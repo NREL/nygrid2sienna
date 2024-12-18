@@ -216,16 +216,40 @@ end
 ##########################
 ### ADD Loads ############
 ##########################
-load_profile = CSV.read("Data/load_profiles.csv", DataFrame)
-load_year = 2019
-for busid in names(load_profile)
 
+###### Baseline Load ##########
+baseline_load_profile = CSV.read("load_profile/Baseload/Baseload_" * string(load_year) * ".csv", DataFrame)
+for busid in names(baseline_load_profile)
     bus = first(get_components(x -> PSY.get_number(x) == parse(Float64, busid), ACBus, sys))
-    name = "load_" * busid
-    load_ts = load_profile[!, busid]
-    # if minimum(load_ts) <= 0.0
-    #     load_ts[load_ts.<=0.0] .= 0.1
-    # end
+    name = "Baseline_load_" * busid
+    load_ts = baseline_load_profile[!, busid]
+    _build_load(sys, bus, name, load_ts, load_year)
+end
+
+###### Comstock Load ##########
+comstock_load_profile = CSV.read("load_profile/Comload/Comload_" * string(load_year) * ".csv", DataFrame)
+for busid in names(comstock_load_profile)
+    bus = first(get_components(x -> PSY.get_number(x) == parse(Float64, busid), ACBus, sys))
+    name = "Comstock_load_" * busid
+    load_ts = comstock_load_profile[!, busid]
+    _build_load(sys, bus, name, load_ts, load_year)
+end
+
+###### Resstock Load ##########
+resstock_load_profile = CSV.read("load_profile/Resload/Resload_" * string(load_year) * ".csv", DataFrame)
+for busid in names(resstock_load_profile)
+    bus = first(get_components(x -> PSY.get_number(x) == parse(Float64, busid), ACBus, sys))
+    name = "Resstock_load_" * busid
+    load_ts = resstock_load_profile[!, busid]
+    _build_load(sys, bus, name, load_ts, load_year)
+end
+
+###### EV Load ##########
+ev_load_profile = CSV.read("load_profile/EVload/EVload.csv", DataFrame)
+for busid in names(ev_load_profile)
+    bus = first(get_components(x -> PSY.get_number(x) == parse(Float64, busid), ACBus, sys))
+    name = "EV_load_" * busid
+    load_ts = ev_load_profile[!, busid]
     _build_load(sys, bus, name, load_ts, load_year)
 end
 
@@ -289,7 +313,7 @@ end
 
 
 ##########################
-### ADD StorageManagementCost ############
+### ADD Storage ############
 ##########################
 df_storage = CSV.read("config/storage_config.csv", DataFrame)
 

@@ -380,20 +380,7 @@ function _build_load(sys, bus::PSY.Bus, name, load_ts, load_year)
     # Add the load component to the power system model
     add_component!(sys, load)
 
-    ### The issue was that the name of the time series and the name in the renewable config doesn't match. Now they matched but we should think about how to name things later to make it easier to track.
-    # Add a time series for the load, scaling the load based on the maximum active power specified by the time series
-    #=
-    PSY.add_time_series!(
-        sys,
-        load,
-        PSY.SingleTimeSeries(
-            "max_active_power",  # Name of the time series for the maximum active power
-            TimeArray(get_timestamp(load_year), load_ts);  # Time series data for the load
-            scaling_factor_multiplier=PSY.get_max_active_power,  # Scaling factor based on the maximum active power
-        ),
-    )
 
-    =#
     if maximum(load_ts) == 0.0
         PSY.add_time_series!(
             sys,

@@ -36,7 +36,7 @@
         },
         {
             "type": "StandardLoad",
-            "count": 57
+            "count": 171
         },
         {
             "type": "ThermalStandard",
@@ -58,7 +58,7 @@
     "time_series_counts": [
         {
             "type": "SingleTimeSeries",
-            "count": 115
+            "count": 229
         }
     ]
 }
