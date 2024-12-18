@@ -43,7 +43,7 @@ end
 ##########################
 ##### ADD Transmission ###
 ##########################
-df_branch = CSV.read("config/branch_config.csv", DataFrame)
+df_branch = CSV.read("config/branch_config_2040.csv", DataFrame)
 br_name_list = Set()
 for (br_id, br) in enumerate(eachrow(df_branch))
     from_id = br.from
@@ -54,7 +54,6 @@ for (br_id, br) in enumerate(eachrow(df_branch))
     v2 = PSY.get_base_voltage(to_bus)
     name = string(from_id) * "-" * string(to_id)
     if name in br_name_list
-        println(name)
         name = name * "~2"
     end
     push!(br_name_list, name)
@@ -91,8 +90,8 @@ end
 ##########################
 ### ADD InterfaceLimits ##
 ##########################
-df_iflim = CSV.read("config/interfaceflow_limits.csv", DataFrame)
-df_ifmap = CSV.read("config/interfaceflow_mapping.csv", DataFrame)
+df_iflim = CSV.read("config/interfaceflow_limits_2030.csv", DataFrame)
+df_ifmap = CSV.read("config/interfaceflow_mapping_2030.csv", DataFrame)
 for idx = 1:nrow(df_iflim)
     name = "IF_" * string(idx)
     rating_lb = df_iflim[df_iflim.index.==Int(idx), :rating_lb][1]

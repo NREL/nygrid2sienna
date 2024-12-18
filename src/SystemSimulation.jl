@@ -24,7 +24,7 @@ sim_name = "test_case"
 output_dir = "TestRun"
 interval = 24
 horizon = 24
-steps = 365
+steps = 2
 
 # Check if the output directory exists, create if not
 if !ispath(output_dir)

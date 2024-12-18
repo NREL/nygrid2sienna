@@ -12,7 +12,7 @@
         },
         {
             "type": "Arc",
-            "count": 93
+            "count": 95
         },
         {
             "type": "Area",
@@ -44,15 +44,15 @@
         },
         {
             "type": "Transformer2W",
-            "count": 35
+            "count": 37
         },
         {
             "type": "TransmissionInterface",
-            "count": 11
+            "count": 15
         },
         {
             "type": "TwoTerminalHVDCLine",
-            "count": 4
+            "count": 6
         }
     ],
     "time_series_counts": [
