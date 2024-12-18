@@ -381,7 +381,17 @@ function _build_load(sys, bus::PSY.Bus, name, load_ts, load_year)
     add_component!(sys, load)
 
 
-    if maximum(load_ts) == 0.0
+    if maximum(load_ts) == 0.0 && minimum(load_ts) == 0.0
+        PSY.add_time_series!(
+            sys,
+            load,
+            PSY.SingleTimeSeries(
+                "max_active_power",
+                TimeArray(get_timestamp(load_year), load_ts),
+                scaling_factor_multiplier=PSY.get_max_active_power,
+            )
+        )
+    elseif maximum(load_ts) == 0.0
         PSY.add_time_series!(
             sys,
             load,

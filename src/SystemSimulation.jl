@@ -2,20 +2,19 @@ using Revise
 using PowerSimulations
 using Dates
 using Logging
+using PowerGraphics
 logger = configure_logging(console_level=Logging.Info)
 const PSI = PowerSimulations
 const PSY = PowerSystems
+const PG = PowerGraphics
 using TimeSeries
 using JuMP
 # using HiGHS
 using Xpress
 using StorageSystemsSimulations
-using HydroPowerSimulations
 using DataFrames
 using CSV
-using PowerGraphics
-const PG = PowerGraphics
-using PlotlyJS
+
 # Include the parsing utilities script
 include("parsing_utils.jl")
 include("post_process.jl")
@@ -23,9 +22,9 @@ include("post_process.jl")
 sim_name = "test_case"
 
 output_dir = "TestRun"
-interval = 1
-horizon = 1
-steps = 1
+interval = 24
+horizon = 24
+steps = 365
 
 # Check if the output directory exists, create if not
 if !ispath(output_dir)
@@ -68,12 +67,12 @@ template_uc = PSI.template_unit_commitment(; network=NetworkModel(PSI.PTDFPowerM
 # Set device models for different components
 set_device_model!(template_uc, ThermalStandard, ThermalBasicDispatch)
 set_device_model!(template_uc, StandardLoad, StaticPowerLoad)
-# set_device_model!(template_uc, GenericBattery, StorageDispatchWithReserves)
+set_device_model!(template_uc, EnergyReservoirStorage, StorageDispatchWithReserves)
 set_device_model!(template_uc, Transformer2W, StaticBranch)
 set_device_model!(template_uc, Line, StaticBranch)
 set_device_model!(template_uc, TwoTerminalHVDCLine, HVDCTwoTerminalLossless)
-# set_device_model!(template_uc, HydroDispatch, HydroDispatchRunOfRiver)
-# set_device_model!(template_uc, RenewableDispatch, RenewableFullDispatch)
+set_device_model!(template_uc, RenewableNonDispatch, FixedOutput)
+set_device_model!(template_uc, RenewableDispatch, RenewableFullDispatch)
 set_service_model!(template_uc, TransmissionInterface, ConstantMaxInterfaceFlow)
 
 # Create simulation models
@@ -103,7 +102,7 @@ sim = Simulation(
     models=models,
     sequence=sequence,
     simulation_folder=output_dir,
-    initial_time=DateTime("2019-07-18T14:00:00")
+    # initial_time=DateTime("2019-07-18T14:00:00")
 )
 
 # Build and execute the simulation
@@ -118,15 +117,15 @@ set_system!(results_uc, sys);
 variables = PSI.read_realized_variables(results_uc)
 export_results_csv(results_uc, variables, "ED", joinpath(results.path, "results"))
 PSI.compute_conflict!(model.internal.container)
-# plotlyjs()
-# p = PG.plot_fuel(
-#     results_uc;
-#     curtailment=true,
-#     display=false,
-#     title="all_plants_case_dispatch", # saved plot will saved with the title as its name
-#     slacks=true,
-#     # generator_mapping_file="generator_mapping.yaml",
-#     # palette=PG.load_palette("color.yaml"),
-#     save=".",
-#     format="html"
-# );
+plotlyjs()
+p = PG.plot_fuel(
+    results_uc;
+    curtailment=true,
+    display=false,
+    title="all_plants_case_dispatch", # saved plot will saved with the title as its name
+    slacks=true,
+    # generator_mapping_file="generator_mapping.yaml",
+    # palette=PG.load_palette("color.yaml"),
+    save=".",
+    format="html"
+);
