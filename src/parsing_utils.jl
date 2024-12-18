@@ -239,7 +239,7 @@ function _add_hydro(
 end
 #Function builds a wind component in the pwoer system. it takes arguments such as the system ('sys'), the bus wheree the wind component is located ('bus::PYS.Bus), 
 #the name of the wind component ('name'), its rating, time series data for wind genration ('re_ts') and the year for which the data is provided ('load_year')
-function _build_wind(sys, bus::PSY.Bus, name, rating, re_ts, load_year)
+function _add_wind(sys, bus::PSY.Bus, name, rating, op_cost, re_ts, load_year)
     #creates wind component using "RenewableDispatch construcotr from PSY package
     wind = PSY.RenewableDispatch(
         name=name,  #set name of wind component            
@@ -251,41 +251,27 @@ function _build_wind(sys, bus::PSY.Bus, name, rating, re_ts, load_year)
         prime_mover_type=PSY.PrimeMovers.WT, #sets the prime mover type of wind turbine
         reactive_power_limits=(min=0.0, max=1.0 * rating / 100.0), #sets the reative power limits 
         power_factor=1.0, #sets the operation cost 
-        operation_cost=TwoPartCost(nothing),
+        operation_cost=op_cost,
         base_power=100, #sets base power to 100 
     )
     # Add the wind component to the power system
     add_component!(sys, wind)
 
     # Add a time series for the maximum active power based on the input time series data
-    if maximum(re_ts) == 0.0
-        PSY.add_time_series!(
-            sys,
-            wind,
-            PSY.SingleTimeSeries(
-                "max_active_power",
-                TimeArray(get_timestamp(load_year), re_ts),
-                scaling_factor_multiplier=PSY.get_max_active_power,
-            )
+    PSY.add_time_series!(
+        sys,
+        wind,
+        PSY.SingleTimeSeries(
+            "max_active_power",
+            TimeArray(get_timestamp(load_year), re_ts / maximum(re_ts)),
+            scaling_factor_multiplier=PSY.get_max_active_power,
         )
-    else
-
-        PSY.add_time_series!(
-            sys,
-            wind,
-            PSY.SingleTimeSeries(
-                "max_active_power",
-                TimeArray(get_timestamp(load_year), re_ts / maximum(re_ts)),
-                scaling_factor_multiplier=PSY.get_max_active_power,
-            )
-        )
-    end
-
+    )
     return wind  #return the newly created wind component
 end
 
 #Function builds a solar component in the power system. Takes similar arguments to wind function. 
-function _build_solar(sys, bus::PSY.Bus, name, rating, re_ts, load_year)
+function _add_upv(sys, bus::PSY.Bus, name, rating, op_cost, re_ts, load_year)
     #creates solar component using the 'RenewableDispatch' constructor from the 'PSY' package 
     solar = PSY.RenewableDispatch(
         name=name,  #sets name of solar component             
@@ -297,66 +283,75 @@ function _build_solar(sys, bus::PSY.Bus, name, rating, re_ts, load_year)
         prime_mover_type=PSY.PrimeMovers.PVe, #sets the prime mover type as photovoltaic 
         reactive_power_limits=(min=0.0, max=1.0 * rating / 100.0), #sets the reactive power limits
         power_factor=1.0, #sets the power factor to 1
-        operation_cost=TwoPartCost(VariableCost(0.139), 0.0), #sets the operation cost of the solar component 
+        operation_cost=op_cost, #sets the operation cost of the solar component 
         base_power=100, #sets the base power to 0 
     )
     #add the solar component to the power system
     add_component!(sys, solar)
 
-    #add a time series for the maximum active power based on the input time series data
-    if maximum(re_ts) == 0.0
-        PSY.add_time_series!(
-            sys,
-            solar,
-            PSY.SingleTimeSeries(
-                "max_active_power",
-                TimeArray(get_timestamp(load_year), re_ts),
-                scaling_factor_multiplier=PSY.get_max_active_power,
-            )
+    PSY.add_time_series!(
+        sys,
+        solar,
+        PSY.SingleTimeSeries(
+            "max_active_power",
+            TimeArray(get_timestamp(load_year), re_ts / rating),
+            scaling_factor_multiplier=PSY.get_max_active_power,
         )
-    else
-        PSY.add_time_series!(
-            sys,
-            solar,
-            PSY.SingleTimeSeries(
-                "max_active_power",
-                TimeArray(get_timestamp(load_year), re_ts / maximum(re_ts)),
-                scaling_factor_multiplier=PSY.get_max_active_power,
-            )
-        )
-    end
+    )
 
     return solar  #return the newly created solar component
 end
 
+function _add_dpv(sys, bus::PSY.Bus, name, rating, op_cost, re_ts, load_year)
+    #creates solar component using the 'RenewableDispatch' constructor from the 'PSY' package 
+    solar = PSY.RenewableNonDispatch(
+        name=name,  #sets name of solar component             
+        available=true,   #marks the component as available       
+        bus=bus, # assigns bus to which the solar ompnent is connected
+        active_power=rating / 100.0, # sets the active power of the solar component based on its rating 
+        reactive_power=0.0, #sets reatie power of solar component to zero 
+        rating=rating / 100.0, #sets rating of solar component 
+        prime_mover_type=PSY.PrimeMovers.PVe, #sets the prime mover type as photovoltaic 
+        power_factor=1.0, #sets the power factor to 1
+        base_power=100, #sets the base power to 0 
+    )
+    #add the solar component to the power system
+    add_component!(sys, solar)
+
+    PSY.add_time_series!(
+        sys,
+        solar,
+        PSY.SingleTimeSeries(
+            "max_active_power",
+            TimeArray(get_timestamp(load_year), re_ts / rating),
+            scaling_factor_multiplier=PSY.get_max_active_power,
+        )
+    )
+
+    return solar  #return the newly created solar component
+end
 #Function builds a battery component in the power system. it takes arugments such as system, type of storage device ('::Type{T}), 
 #the bus where the battery component is loacted, its name, energy capacity, rating and efficiency
-function _build_battery(sys, ::Type{T}, bus::PSY.Bus, name, energy_capacity, rating, efficiency) where {T<:PSY.Storage}
-
+function _add_storage(sys, bus::PSY.Bus, name, power_capacity, energy_capacity, efficiency, op_cost)
     # Create a new storage device of the specified type
-    device = T(
+    device = PSY.EnergyReservoirStorage(
         name=name,                         # Set the name for the new component
         available=true,                    # Mark the component as available
         bus=bus,                           # Assign the bus to the component
         prime_mover_type=PSY.PrimeMovers.BA,    # Set the prime mover to Battery
-        initial_energy=energy_capacity / 2,  # Set initial energy level
-        state_of_charge_limits=(min=energy_capacity * 0.1, max=energy_capacity),  # Set state of charge limits
-        rating=rating,                     # Set the rating
-        active_power=rating,               # Set active power equal to rating
-        input_active_power_limits=(min=0.0, max=rating),  # Set input active power limits
-        output_active_power_limits=(min=0.0, max=rating),  # Set output active power limits
-        efficiency=(in=efficiency / 10000, out=1.0),  # Set efficiency
+        storage_technology_type=StorageTech.LIB,
+        storage_capacity=energy_capacity / 100.0,
+        storage_level_limits=(min=0.1, max=1.0),
+        initial_storage_capacity_level=0.5,  # Set initial energy level
+        rating=power_capacity / 100.0,                     # Set the rating
+        active_power=power_capacity / 100.0,               # Set active power equal to rating
+        input_active_power_limits=(min=0.0, max=power_capacity / 100.0),  # Set input active power limits
+        output_active_power_limits=(min=0.0, max=power_capacity / 100.0),  # Set output active power limits
+        efficiency=(in=efficiency, out=1.0),  # Set efficiency
         reactive_power=0.0,                # Set reactive power
         reactive_power_limits=nothing,      # No reactive power limits
         base_power=100.0,                    # Set base power
-        operation_cost=StorageManagementCost(
-            VariableCost(0.0),
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-        )
+        operation_cost=op_cost
     )
 
     # Add the battery component to the power system

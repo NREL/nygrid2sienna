@@ -19,8 +19,20 @@
             "count": 14
         },
         {
+            "type": "EnergyReservoirStorage",
+            "count": 22
+        },
+        {
             "type": "Line",
             "count": 57
+        },
+        {
+            "type": "RenewableDispatch",
+            "count": 34
+        },
+        {
+            "type": "RenewableNonDispatch",
+            "count": 24
         },
         {
             "type": "StandardLoad",
@@ -46,7 +58,7 @@
     "time_series_counts": [
         {
             "type": "SingleTimeSeries",
-            "count": 57
+            "count": 115
         }
     ]
 }

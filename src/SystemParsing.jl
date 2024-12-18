@@ -10,6 +10,7 @@ const IS = InfrastructureSystems
 include("parsing_utils.jl")
 
 base_power = 100
+load_year = 2019
 sys = PSY.System(base_power)
 set_units_base_system!(sys, PSY.UnitSystem.NATURAL_UNITS)
 
@@ -90,7 +91,7 @@ end
 ##########################
 ### ADD InterfaceLimits ##
 ##########################
-df_iflim = CSV.read("config/interfaceflow_limits0718.csv", DataFrame)
+df_iflim = CSV.read("config/interfaceflow_limits.csv", DataFrame)
 df_ifmap = CSV.read("config/interfaceflow_mapping.csv", DataFrame)
 for idx = 1:nrow(df_iflim)
     name = "IF_" * string(idx)
@@ -226,6 +227,82 @@ for busid in names(load_profile)
     #     load_ts[load_ts.<=0.0] .= 0.1
     # end
     _build_load(sys, bus, name, load_ts, load_year)
+end
+
+##########################
+### ADD Wind ############
+##########################
+df_wind = CSV.read("config/wind_config.csv", DataFrame)
+wind_profile_raw = CSV.read("wind_profile/Wind" * string(load_year) * ".csv", DataFrame, header=false)
+new_header = wind_profile_raw.Column1
+transposed_data = permutedims(Matrix(select(wind_profile_raw, Not(:Column1))))
+wind_profile = DataFrame(transposed_data, Symbol.(string.(new_header)), makeunique=true)
+
+for (wind_id, wind) in enumerate(eachrow(df_wind))
+    name = wind.name
+    bus = first(get_components(x -> PSY.get_number(x) == wind.BusId, ACBus, sys))
+    rating = wind.rating
+    op_cost = RenewableGenerationCost(; variable=CostCurve(; value_curve=LinearCurve(1.0)))
+    if wind.name[1:3] == "OSW" && wind.BusId in [79, 80]
+        re_ts = wind_profile[!, string(wind.BusId)*"_1"]
+    else
+        re_ts = wind_profile[!, string(wind.BusId)]
+    end
+    generator = _add_wind(sys, bus, name, rating, op_cost, re_ts, load_year)
+end
+
+##########################
+### ADD UPV ############
+##########################
+df_upv = CSV.read("config/upv_config.csv", DataFrame)
+upv_profile_raw = CSV.read("upv_profile/solarUPV" * string(load_year) * ".csv", DataFrame, header=false)
+new_header = upv_profile_raw.Column1
+transposed_data = permutedims(Matrix(select(upv_profile_raw, Not(:Column1))))
+upv_profile = DataFrame(transposed_data, Symbol.(string.(new_header)), makeunique=true)
+
+for (upv_id, upv) in enumerate(eachrow(df_upv))
+    name = upv.name
+    bus = first(get_components(x -> PSY.get_number(x) == upv.BusId, ACBus, sys))
+    rating = upv.rating
+    op_cost = RenewableGenerationCost(; variable=CostCurve(; value_curve=LinearCurve(1.0)))
+    re_ts = upv_profile[!, string(upv.BusId)]
+    generator = _add_upv(sys, bus, name, rating, op_cost, re_ts, load_year)
+end
+
+##########################
+### ADD DPV ############
+##########################
+df_dpv = CSV.read("config/dpv_config.csv", DataFrame)
+dpv_profile_raw = CSV.read("dpv_profile/solarDPV" * string(load_year) * ".csv", DataFrame, header=false)
+new_header = dpv_profile_raw.Column1
+transposed_data = permutedims(Matrix(select(dpv_profile_raw, Not(:Column1))))
+dpv_profile = DataFrame(transposed_data, Symbol.(string.(new_header)), makeunique=true)
+
+for (dpv_id, dpv) in enumerate(eachrow(df_dpv))
+    name = dpv.name
+    bus = first(get_components(x -> PSY.get_number(x) == dpv.BusId, ACBus, sys))
+    rating = dpv.rating
+    op_cost = RenewableGenerationCost(; variable=CostCurve(; value_curve=LinearCurve(1.0)))
+    re_ts = dpv_profile[!, string(dpv.BusId)]
+    generator = _add_dpv(sys, bus, name, rating, op_cost, re_ts, load_year)
+end
+
+
+##########################
+### ADD StorageManagementCost ############
+##########################
+df_storage = CSV.read("config/storage_config.csv", DataFrame)
+
+for (sto_id, sto) in enumerate(eachrow(df_storage))
+    name = sto.name
+    bus = first(get_components(x -> PSY.get_number(x) == sto.BusId, ACBus, sys))
+    power_capacity = sto.PowerCap
+    energy_capacity = sto.EnergyCap
+    efficiency = 0.95
+    op_cost = StorageCost(charge_variable_cost=CostCurve(LinearCurve(0.0)))
+
+    storage = _add_storage(sys, bus, name, power_capacity, energy_capacity, efficiency, op_cost)
+
 end
 
 PSY.to_json(sys, "nys2019.json", force=true)
