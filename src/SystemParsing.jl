@@ -166,15 +166,15 @@ for (hy_id, hy) in enumerate(eachrow(df_hydro))
     bus = first(get_components(x -> PSY.get_number(x) == hy.BusId, ACBus, sys))
     pmin = hy.Pmin
     pmax = hy.Pmax
-    op_cost = ThermalGenerationCost(;
+    op_cost = HydroGenerationCost(;
         variable=FuelCurve(; value_curve=LinearCurve(3.0), fuel_cost=1.0),
         fixed=0.0,
-        start_up=0.0,
-        shut_down=0.0,
     )
     ramp_rate = hy.maxRamp10 / 10.0
     pm = PrimeMovers.HY
-    generator = _add_hydro(sys, bus, name=name, cost=op_cost, pmin=pmin, pmax=pmax, ramp_rate=ramp_rate, pm=pm)
+    timest = get_timestamp(load_year)
+    hy_ts = ones(size(timest)) * pmax
+    generator = _add_hydro(sys, bus, name=name, cost=op_cost, pmin=pmin, pmax=pmax, ramp_rate=ramp_rate, pm=pm, ts=hy_ts)
 end
 
 ##  Add AggGen ###########
@@ -200,7 +200,7 @@ for (th_id, th) in enumerate(eachrow(df_agg))
     #     pmin = 0.2 * pmax ## TODO: find better way to estimate pmin
     # end
     filtered_df = filter(row -> row.ZoneName == zonename_mapping[th.Zone], df_hourlylmp)
-    zonal_price = filtered_df[4767, "LBMP"] ###TODO: this needs to be a time-series
+    zonal_price = filtered_df[1, "LBMP"] ###TODO: this needs to be a time-series
     op_cost = ThermalGenerationCost(;
         variable=FuelCurve(; value_curve=LinearCurve(zonal_price), fuel_cost=1.0),
         fixed=0.0,

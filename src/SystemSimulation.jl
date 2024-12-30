@@ -12,6 +12,7 @@ using JuMP
 # using HiGHS
 using Xpress
 using StorageSystemsSimulations
+using HydroPowerSimulations
 using DataFrames
 using CSV
 
@@ -19,12 +20,12 @@ using CSV
 include("parsing_utils.jl")
 include("post_process.jl")
 # Simulation setup parameters
-sim_name = "test_case"
+sim_name = "clcpa2040test"
 
 output_dir = "TestRun"
 interval = 24
 horizon = 24
-steps = 2
+steps = 365
 
 # Check if the output directory exists, create if not
 if !ispath(output_dir)
@@ -73,6 +74,7 @@ set_device_model!(template_uc, Line, StaticBranch)
 set_device_model!(template_uc, TwoTerminalHVDCLine, HVDCTwoTerminalLossless)
 set_device_model!(template_uc, RenewableNonDispatch, FixedOutput)
 set_device_model!(template_uc, RenewableDispatch, RenewableFullDispatch)
+set_device_model!(template_uc, HydroDispatch, HydroDispatchRunOfRiver)
 set_service_model!(template_uc, TransmissionInterface, ConstantMaxInterfaceFlow)
 
 # Create simulation models
@@ -116,7 +118,7 @@ results_uc = get_decision_problem_results(results, "UC");
 set_system!(results_uc, sys);
 variables = PSI.read_realized_variables(results_uc)
 export_results_csv(results_uc, variables, "ED", joinpath(results.path, "results"))
-PSI.compute_conflict!(model.internal.container)
+# PSI.compute_conflict!(model.internal.container)
 plotlyjs()
 p = PG.plot_fuel(
     results_uc;

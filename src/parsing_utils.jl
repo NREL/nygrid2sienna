@@ -214,27 +214,51 @@ function _add_hydro(
     ramp_rate,
     cost::PSY.OperationalCost,
     pm::PSY.PrimeMovers,
+    ts,
 )
-    device = PSY.ThermalStandard(
+    device = PSY.HydroDispatch(
         name=name,
         available=true,
         bus=bus,
-        status=true,
         active_power=pmax / base_power,
         reactive_power=0.0,
         rating=pmax / base_power,
+        prime_mover_type=pm,
         active_power_limits=PSY.MinMax((pmin / base_power, pmax / base_power)),
         reactive_power_limits=nothing,
         ramp_limits=(up=ramp_rate / base_power, down=ramp_rate / base_power),
-        operation_cost=cost,
-        base_power=base_power,
         time_limits=(up=1.0, down=1.0),
-        prime_mover_type=pm,
-        fuel=ThermalFuels.OTHER,
-        ext=Dict{String,Any}(),
-    )
-    PSY.add_component!(sys, device)
+        base_power=base_power,
+        operation_cost=cost,)
 
+    # device = PSY.ThermalStandard(
+    #     name=name,
+    #     available=true,
+    #     bus=bus,
+    #     status=true,
+    #     active_power=pmax / base_power,
+    #     reactive_power=0.0,
+    #     rating=pmax / base_power,
+    #     active_power_limits=PSY.MinMax((pmin / base_power, pmax / base_power)),
+    #     reactive_power_limits=nothing,
+    #     ramp_limits=(up=ramp_rate / base_power, down=ramp_rate / base_power),
+    #     operation_cost=cost,
+    #     base_power=base_power,
+    #     time_limits=(up=1.0, down=1.0),
+    #     prime_mover_type=pm,
+    #     fuel=ThermalFuels.GEOTHERMAL,
+    #     ext=Dict{String,Any}(),
+    # )
+    PSY.add_component!(sys, device)
+    PSY.add_time_series!(
+        sys,
+        device,
+        PSY.SingleTimeSeries(
+            "max_active_power",
+            TimeArray(get_timestamp(load_year), ts / maximum(ts)),
+            scaling_factor_multiplier=PSY.get_max_active_power,
+        )
+    )
     return device  # Return the newly created component
 end
 #Function builds a wind component in the pwoer system. it takes arguments such as the system ('sys'), the bus wheree the wind component is located ('bus::PYS.Bus), 
