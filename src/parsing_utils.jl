@@ -128,7 +128,7 @@ end
 
 function _add_thermal_cost(heatrate1, heatrate0, zone, fuel, pmin, fuel_table)
     heat_rate_curve = LinearCurve(heatrate1, heatrate0)
-    priceTable = fuel_table[29, :] #TODO: Selecting the first week's fuel price now
+    priceTable = fuel_table[1, :] #TODO: Selecting the first week's fuel price now
     fuelPrice = 0.0
     if fuel == "Coal"
         fuelPrice = priceTable["coal_NY"]
