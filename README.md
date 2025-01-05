@@ -4,10 +4,16 @@ This repo holds the translation of the [NYgrid](https://github.com/AndersonEnerg
 
 The 2040 version of the model has a unified correlated renewable and load profiles for 22 years. The methodology to generate these data is introduced in ["Heterogeneous Vulnerability of Zero-Carbon Power Grids under Climate-Technological Changes"](https://arxiv.org/abs/2307.15079) and the scripts to genreate these data and be found in the [ny-clcpa2050](https://github.com/AndersonEnergyLab-Cornell/ny-clcpa2050) repo.
 
+# Branch Info:
+
+1. The `main` branch has the 2019 baseline system, which has been validated with the model in the NYgrid repo. The main draw back is that this repo doesn't have time-series thermal cost data. This repo is a good start point to make and test any additional improvements for the model. 
+2. The `2019_timeseries_fuelcost` branch has the time-series fuel cost. By using the V0.29.0 verison of PSI, it duplicates the models in the NYgrid repo. 
+3. The `clcpa2040` branch has the 2040 version of the model with all the renewables and electrified load for 22 years. 
+
 # Potential Improvements from Sienna Ecosystem
-1. Start-up and no load costs and be modeled in the Sienna Ecosystem and enable a full unit commitment dispach.
+1. Start-up and no load costs and be modeled in the Sienna Ecosystem and enable a full unit commitment dispach. (TODO)
 2. Min up and min down time can be modeled 
-3. Pumped Hydro has a more sophiscated model 
+3. Pumped Hydro has a more sophiscated model but is lacking time-series data
 4. Smaller hydro plant can have a time-series input to reflect seasonal variance
 
 # Limitations
