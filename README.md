@@ -28,8 +28,8 @@ The 2040 version of the model features a unified, correlated dataset of renewabl
 # Data Source:
 1. Network Data: Original NPCC140 data is avaialble from https://github.com/CURENT/andes/tree/master/andes/cases/npcc.
 2. The 2019 Baseline load, power flow, fuel mix, fuel cost and price data are available from NYISO OASIS: http://mis.nyiso.com/public
-3. More details on Baseline model assumptions is available from https://scholar.google.com/citations?view_op=view_citation&hl=en&user=HdTSkG8AAAAJ&citation_for_view=HdTSkG8AAAAJ:2osOgNQ5qMEC.
+3. More details on Baseline model assumptions is available from [An Open Source Representation for the NYS Electric Grid to Support Power Grid and Market Transition Studies](https://ieeexplore.ieee.org/abstract/document/9866561).
 4. The 2040 wind and solar profiles are created using the [Wind Integration National Dataset Toolkits](https://www.nrel.gov/grid/wind-toolkit.html) and the [Solar Integration National Dataset Toolkit](https://www.nrel.gov/grid/sind-toolkit.html) along with the [MERRA-2](https://gmao.gsfc.nasa.gov/reanalysis/merra-2/) reanalysis data. 
-5. The electrification of buildings and EVs uses data from [ComStock](https://comstock.nrel.gov/), [ResStock](https://resstock.nrel.gov/) and EVI-Pro Lite(https://afdc.energy.gov/evi-x-toolbox#/evi-pro-ports). 
+5. The electrification of buildings and EVs uses data from [ComStock](https://comstock.nrel.gov/), [ResStock](https://resstock.nrel.gov/) and [EVI-Pro Lite](https://afdc.energy.gov/evi-x-toolbox#/evi-pro-ports). 
 
 
