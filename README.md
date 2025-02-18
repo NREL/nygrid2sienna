@@ -1,10 +1,11 @@
-# nys_psy
+# NYgrid Model Translation to the Sienna Ecosystem  
 
-This repo holds the translation of the [NYgrid](https://github.com/AndersonEnergyLab-Cornell/NYgrid) model developed by the [Anderson Energy Lab](https://andersonenergylab-cornell.github.io/) at Cornell University to the Sienna Ecosystem. In addition to the baseline model developed based on the 2019 data, this repo also contains virtual wind and solar sites modeled for the New York's Climate Leadership & Community Protection Act for 2040. 
+This repository contains the translation of the [NYgrid](https://github.com/AndersonEnergyLab-Cornell/NYgrid) model, developed by the [Anderson Energy Lab](https://andersonenergylab-cornell.github.io/) at Cornell University, into the Sienna Ecosystem. In addition to the baseline model, which is based on 2019 data, this repository includes virtual wind and solar sites modeled to align with New York's Climate Leadership & Community Protection Act (CLCPA) targets for 2040.  
 
-The 2040 version of the model has a unified correlated renewable and load profiles for 22 years. The methodology to generate these data is introduced in ["Heterogeneous Vulnerability of Zero-Carbon Power Grids under Climate-Technological Changes"](https://arxiv.org/abs/2307.15079) and the scripts to genreate these data and be found in the [ny-clcpa2050](https://github.com/AndersonEnergyLab-Cornell/ny-clcpa2050) repo.
+The 2040 version of the model features a unified, correlated dataset of renewable generation and load profiles spanning 22 years. The methodology used to generate these data is detailed in ["Heterogeneous Vulnerability of Zero-Carbon Power Grids under Climate-Technological Changes"](https://arxiv.org/abs/2307.15079), and the scripts for data generation are available in the [ny-clcpa2050](https://github.com/AndersonEnergyLab-Cornell/ny-clcpa2050) repository.  
 
-Note that although this model is a test system that is intended to mimic the power flow of the NYS transmission system, it is NOT representative of the real transmission system. 
+> **Note:** While this test system is designed to simulate the power flow of the New York State transmission system, it does not represent the actual transmission network.
+
 
 # Branch Info:
 
