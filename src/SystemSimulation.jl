@@ -25,7 +25,7 @@ sim_name = "clcpa2040test"
 output_dir = "TestRun"
 interval = 24
 horizon = 24
-steps = 365
+steps = 1
 
 # Check if the output directory exists, create if not
 if !ispath(output_dir)
@@ -58,11 +58,12 @@ solver = optimizer_with_attributes(
 # )
 # Create a power system
 #sys = System(sys_name) - was defined in SystemParsing.jl
-
+add_reserves(sys; reg_reserve_frac=0.05, spinning_reserve_frac=0.1);
 # Transform time series data for the specified horizon and interval
 PSY.transform_single_time_series!(sys, Hour(horizon), Hour(interval))
 
 # Create a unit commitment template using DC power flow model
+# template_uc = PSI.template_unit_commitment(; network=NetworkModel(PSI.AreaBalancePowerModel, use_slacks=false, PTDF_matrix=PTDF(sys)))
 template_uc = PSI.template_unit_commitment(; network=NetworkModel(PSI.PTDFPowerModel, use_slacks=false, PTDF_matrix=PTDF(sys)))
 # template_uc = PSI.template_unit_commitment(; network=NetworkModel(PSI.CopperPlatePowerModel, use_slacks=false, PTDF_matrix=PTDF(sys)))
 # Set device models for different components

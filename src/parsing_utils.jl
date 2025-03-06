@@ -441,3 +441,68 @@ function _build_load(sys, bus::PSY.Bus, name, load_ts, load_year)
 end
 
 
+function add_reserves(sys; reg_reserve_frac=0.1, spinning_reserve_frac=0.5)
+    PSY.set_units_base_system!(sys, UnitSystem.NATURAL_UNITS)
+    power_loads = get_components(StandardLoad, sys)
+    ts_length = length(get_time_series_values(SingleTimeSeries, collect(power_loads)[1], "max_active_power"))
+    reserve_ts = zeros(ts_length)
+    TS = zeros(ts_length)
+
+    for p in power_loads
+        ts = get_time_series_values(SingleTimeSeries, p, "max_active_power")
+        reserve_ts = reserve_ts .+ ts * reg_reserve_frac
+        TS = get_time_series_timestamps(SingleTimeSeries, p, "max_active_power")
+    end
+    service = PSY.VariableReserve{ReserveUp}(
+        name="Reg_Up",
+        available=true,
+        time_frame=60,
+        requirement=maximum(reserve_ts) / 100,
+        deployed_fraction=0.0,
+        max_participation_factor=0.5,
+        max_output_fraction=0.5,
+        sustained_time=3600.0)
+    contri_devices = get_components(x -> !(typeof(x) <: StaticLoad), StaticInjection, sys)
+    add_service!(sys, service, contri_devices)
+    add_time_series!(
+        sys,
+        service,
+        SingleTimeSeries("requirement", TimeArray(TS, reserve_ts ./ maximum(reserve_ts)), scaling_factor_multiplier=get_requirement)
+    )
+
+    spin_reserve_ts = zeros(ts_length)
+    if length(get_components(x -> PSY.get_prime_mover_type(x) == PSY.PrimeMovers.PVe && PSY.get_available(x) == true, PSY.RenewableGen, sys)) > 0
+        if length(get_components(x -> PSY.get_prime_mover_type(x) == PSY.PrimeMovers.WT && PSY.get_available(x) == true, PSY.RenewableGen, sys)) > 0
+            TS_spin = get_time_series_timestamps(SingleTimeSeries, first(get_components(x -> PSY.get_available(x) == true, PSY.RenewableGen, sys)), "max_active_power")
+            for p in get_components(x -> PSY.get_available(x) == true, PSY.RenewableGen, sys)
+                ts = get_time_series_values(SingleTimeSeries, p, "max_active_power")
+                spin_reserve_ts = spin_reserve_ts .+ ts * spinning_reserve_frac
+            end
+        else
+            TS_spin = get_time_series_timestamps(SingleTimeSeries, first(get_components(x -> PSY.get_prime_mover_type(x) == PSY.PrimeMovers.PVe && PSY.get_available(x) == true, PSY.RenewableGen, sys)), "max_active_power")
+            for p in get_components(x -> PSY.get_prime_mover_type(x) == PSY.PrimeMovers.PVe && PSY.get_available(x) == true, PSY.RenewableGen, sys)
+                ts = get_time_series_values(SingleTimeSeries, p, "max_active_power")
+                spin_reserve_ts = spin_reserve_ts .+ ts * spinning_reserve_frac
+            end
+        end
+
+        service = PSY.VariableReserve{ReserveUp}(
+            name="Flex_Up",
+            available=true,
+            time_frame=60.0,
+            requirement=maximum(spin_reserve_ts) / 100,
+            deployed_fraction=0.0,
+            max_participation_factor=0.5,
+            max_output_fraction=1.0,
+            sustained_time=3600.0)
+        contri_devices = get_components(x -> !(typeof(x) <: StaticLoad) && !(typeof(x) <: RenewableGen), StaticInjection, sys)
+        add_service!(sys, service, contri_devices)
+        add_time_series!(
+            sys,
+            service,
+            SingleTimeSeries("requirement", TimeArray(TS_spin, spin_reserve_ts ./ maximum(spin_reserve_ts)), scaling_factor_multiplier=get_requirement)
+        )
+        PSY.set_units_base_system!(sys, UnitSystem.SYSTEM_BASE)
+    end
+    return sys
+end
