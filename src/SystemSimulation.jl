@@ -23,9 +23,9 @@ include("post_process.jl")
 sim_name = "test_case"
 
 output_dir = "TestRun"
-interval = 1
-horizon = 1
-steps = 1
+interval = 24
+horizon = 48
+steps = 3
 
 # Check if the output directory exists, create if not
 if !ispath(output_dir)
@@ -63,13 +63,13 @@ solver = optimizer_with_attributes(
 PSY.transform_single_time_series!(sys, Hour(horizon), Hour(interval))
 
 # Create a unit commitment template using DC power flow model
-template_uc = PSI.template_unit_commitment(; network=NetworkModel(PSI.PTDFPowerModel, use_slacks=false, PTDF_matrix=PTDF(sys)))
+template_uc = PSI.template_unit_commitment(; network=NetworkModel(PSI.PM.NFAPowerModel, use_slacks=false,))
 # template_uc = PSI.template_unit_commitment(; network=NetworkModel(PSI.CopperPlatePowerModel, use_slacks=false, PTDF_matrix=PTDF(sys)))
 # Set device models for different components
 set_device_model!(template_uc, ThermalStandard, ThermalBasicDispatch)
 set_device_model!(template_uc, StandardLoad, StaticPowerLoad)
 # set_device_model!(template_uc, GenericBattery, StorageDispatchWithReserves)
-set_device_model!(template_uc, Transformer2W, StaticBranch)
+# set_device_model!(template_uc, Transformer2W, StaticBranch)
 set_device_model!(template_uc, Line, StaticBranch)
 set_device_model!(template_uc, TwoTerminalHVDCLine, HVDCTwoTerminalLossless)
 # set_device_model!(template_uc, HydroDispatch, HydroDispatchRunOfRiver)
@@ -103,7 +103,7 @@ sim = Simulation(
     models=models,
     sequence=sequence,
     simulation_folder=output_dir,
-    initial_time=DateTime("2019-07-18T14:00:00")
+    # initial_time=DateTime("2019-07-18T14:00:00")
 )
 
 # Build and execute the simulation
