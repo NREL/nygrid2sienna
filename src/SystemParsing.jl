@@ -10,6 +10,7 @@ const IS = InfrastructureSystems
 include("parsing_utils.jl")
 
 base_power = 100
+load_year = 2019
 sys = PSY.System(base_power)
 set_units_base_system!(sys, PSY.UnitSystem.NATURAL_UNITS)
 
@@ -201,16 +202,11 @@ for (th_id, th) in enumerate(eachrow(df_agg))
     #     pmin = 0.2 * pmax ## TODO: find better way to estimate pmin
     # end
     filtered_df = filter(row -> row.ZoneName == zonename_mapping[th.Zone], df_hourlylmp)
-    zonal_price = filtered_df[1, "LBMP"] ###TODO: this needs to be a time-series
-    op_cost = ThermalGenerationCost(;
-        variable=FuelCurve(; value_curve=LinearCurve(zonal_price), fuel_cost=1.0),
-        fixed=0.0,
-        start_up=0.0,
-        shut_down=0.0,
-    )
+    zonal_price = filtered_df[1:8760, "LBMP"] ###TODO: this needs to be a time-series
+    heat_rate_curve = LinearCurve(1.0, 0)
     ramp_rate = th.maxRampAgc
     pm = PrimeMovers.OT
-    generator = _add_thermal(sys, bus, name=name, fuel=fuel, cost=op_cost, pmin=pmin, pmax=pmax, ramp_rate=ramp_rate, pm=pm)
+    generator = _add_thermal_agg(sys, bus, name, heat_rate_curve, fuel, pmin, pmax, ramp_rate, pm, zonal_price)
 end
 
 ##########################

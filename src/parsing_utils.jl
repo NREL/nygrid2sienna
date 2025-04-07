@@ -72,6 +72,62 @@ function _build_hvdc(sys; frombus::PSY.ACBus, tobus::PSY.ACBus, name, r, x, b, r
     PSY.add_component!(sys, device)
     return device
 end
+function _add_thermal_agg(
+    sys::System,
+    bus::PSY.Bus,
+    name,
+    heat_rate::PSY.LinearCurve,
+    fuel,
+    pmin,
+    pmax,
+    ramp_rate,
+    pm::PSY.PrimeMovers,
+    fuel_cost_ts,
+)
+    device = PSY.ThermalStandard(
+        name=name,
+        available=true,
+        status=true,
+        bus=bus,
+        active_power=0.0,
+        reactive_power=0.0,
+        rating=pmax / base_power,
+        active_power_limits=PSY.MinMax((pmin / base_power, pmax / base_power)),
+        reactive_power_limits=nothing,
+        ramp_limits=(up=ramp_rate / base_power, down=ramp_rate / base_power),
+        operation_cost=ThermalGenerationCost(
+            variable=FuelCurve(; value_curve=heat_rate, fuel_cost=1.0),
+            fixed=0.0,
+            start_up=0.0,
+            shut_down=0.0),
+        base_power=base_power,
+        time_limits=(up=1.0, down=1.0),
+        prime_mover_type=pm,
+        fuel=fuel,
+        time_at_status=999.0,
+        ext=Dict{String,Any}(),
+    )
+    PSY.add_component!(sys, device)
+    PSY.add_time_series!(
+        sys,
+        device,
+        PSY.SingleTimeSeries(
+            "fuel_cost",
+            TimeArray(get_timestamp(load_year), fuel_cost_ts),
+            scaling_factor_multiplier=nothing,
+        )
+    )
+    fuel_curve = FuelCurve(; value_curve=heat_rate, fuel_cost=get_time_series_keys(device)[1])
+    startup_cost = 0.0
+    op_cost = ThermalGenerationCost(;
+        variable=fuel_curve,
+        fixed=0.0,
+        start_up=startup_cost,
+        shut_down=0.0,
+    )
+    set_operation_cost!(device, op_cost)
+    return device  # Return the newly created component
+end
 
 
 function _build_interface_flow(sys; name, rating_lb, rating_ub, ifdict)
@@ -128,7 +184,7 @@ end
 
 function _add_thermal_cost(heatrate1, heatrate0, zone, fuel, pmin, fuel_table)
     heat_rate_curve = LinearCurve(heatrate1, heatrate0)
-    priceTable = fuel_table[29, :] #TODO: Selecting the first week's fuel price now
+    priceTable = fuel_table[1, :] #TODO: Selecting the first week's fuel price now
     fuelPrice = 0.0
     if fuel == "Coal"
         fuelPrice = priceTable["coal_NY"]
