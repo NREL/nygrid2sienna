@@ -21,7 +21,7 @@ sim_name = "test_case"
 output_dir = "TestRun"
 interval = 24
 horizon = 24
-steps = 365
+steps = 2
 
 # Check if the output directory exists, create if not
 if !ispath(output_dir)
@@ -60,6 +60,7 @@ PSY.transform_single_time_series!(sys, Hour(horizon), Hour(interval))
 
 # Create a unit commitment template using DC power flow model
 template_uc = PSI.template_unit_commitment(; network=NetworkModel(PSI.PTDFPowerModel, use_slacks=false, PTDF_matrix=PTDF(sys)))
+# template_uc = PSI.template_unit_commitment(; network=NetworkModel(PSI.NFAPowerModel, use_slacks=false,))
 # template_uc = PSI.template_unit_commitment(; network=NetworkModel(PSI.CopperPlatePowerModel, use_slacks=false, PTDF_matrix=PTDF(sys)))
 # Set device models for different components
 set_device_model!(template_uc, ThermalStandard, ThermalBasicDispatch)

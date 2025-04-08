@@ -140,10 +140,10 @@ for (th_id, th) in enumerate(eachrow(df_thermal))
     # if pmin == 0.0
     #     pmin = 0.2 * pmax ## TODO: find better way to estimate pmin
     # end
-    heat_rate_curve, fuel_cost_ts = _add_fuel_cost(th.HeatRateLM_1, th.HeatRateLM_0, th.Zone, th.FuelType, pmin, hourly_fuelcost)
+    op_cost = _add_thermal_cost(th.HeatRateLM_1, th.HeatRateLM_0, th.Zone, th.FuelType, pmin, fuel_cost)
     ramp_rate = th.maxRamp10 / 10.0
     pm = pm_mapping[th.UnitType]
-    generator = _add_thermal(sys, bus, name, heat_rate_curve, fuel, pmin, pmax, ramp_rate, pm, fuel_cost_ts)
+    generator = _add_thermal(sys, bus, name=name, fuel=fuel, cost=op_cost, pmin=pmin, pmax=pmax, ramp_rate=ramp_rate, pm=pm)
 end
 
 
@@ -212,7 +212,7 @@ for (th_id, th) in enumerate(eachrow(df_agg))
     heat_rate_curve = LinearCurve(1.0, 0)
     ramp_rate = th.maxRampAgc
     pm = PrimeMovers.OT
-    generator = _add_thermal(sys, bus, name, heat_rate_curve, fuel, pmin, pmax, ramp_rate, pm, zonal_price)
+    generator = _add_thermal_agg(sys, bus, name, heat_rate_curve, fuel, pmin, pmax, ramp_rate, pm, zonal_price)
 end
 
 ##########################
