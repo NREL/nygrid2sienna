@@ -33,3 +33,6 @@ The 2040 version of the model features a unified, correlated dataset of renewabl
 5. The electrification of buildings and EVs uses data from [ComStock](https://comstock.nrel.gov/), [ResStock](https://resstock.nrel.gov/) and [EVI-Pro Lite](https://afdc.energy.gov/evi-x-toolbox#/evi-pro-ports). 
 
 
+# License
+The repository was built from open source resources. The material in this repository were developed at the National Renewable Energy Laboratory under SWR-25-63. The materials in this repository are subject to the BSD-3-Clause License.
+
